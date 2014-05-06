@@ -11,7 +11,8 @@
     "requirejs": "~2.1.11"
   },
   "devDependencies": {
-    "grunt": "~0.4.4"
+    "grunt": "~0.4.4",
+    "grunt-http-server": "0.0.5"
   },
   "repository": "",
   "keywords": [
