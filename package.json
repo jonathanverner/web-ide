@@ -1,0 +1,24 @@
+{
+  "name": "web-ide",
+  "version": "0.0.0",
+  "description": "Browser IDE for Python, Javascript and more.",
+  "main": "Gruntfile.js",
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {
+    "intern": "~1.7.0",
+    "requirejs": "~2.1.11"
+  },
+  "devDependencies": {
+    "grunt": "~0.4.4"
+  },
+  "repository": "",
+  "keywords": [
+    "IDE",
+    "Python",
+    "Javascript"
+  ],
+  "author": "Jonathan L. Verner",
+  "license": "GPLv3"
+}

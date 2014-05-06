@@ -1,0 +1,14 @@
+bower_components
+brython
+codemirror
+empythoned
+emscripten
+jq-console
+js-git
+js-github
+node_modules
+skulpt
+lcov.info
+npm-debug.log
+ide.kdev4
+.kdev4
