@@ -61,6 +61,26 @@ define(["app/Store","app/os","app/utils"],function (Store,OS,utils) {
             node.content[name]= { dir:false, content:"" };
         }
 
+        this.stat = function(path) {
+            var ret = {};
+            try {
+                var node = find_node(root,path);
+                if (node.dir) {
+                    ret.type=Store.TP.DIRECTORY;
+                    ret.size=0;
+                    for ( item in node.content ) ret.size++;
+                } else {
+                    ret.type=Store.TP.FILE;
+                    ret.size=node.content.length;
+                }
+            } catch (e) {
+                if (e.code == Store.Exceptions.FILE_NOT_FOUND) {
+                    ret.type = Store.TP.NONE
+                } else throw e;
+            }
+            return ret;
+        }
+
         this.mv = function(path_f, path_t) {
             var parent_f = find_parent(path_f), parent_t = find_parent(path_t);
             var name_f = basename(path_f), name_t = basename(path_t);

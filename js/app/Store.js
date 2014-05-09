@@ -21,7 +21,8 @@ define(["app/Signals","app/os"], function(Signals,OS) {
         },
         TP: {
             FILE:0,
-            DIRECTORY:1
+            DIRECTORY:1,
+            NONE:2
         },
         StoreException: function(code) {
             this.message = ExToString(code);
@@ -37,6 +38,7 @@ define(["app/Signals","app/os"], function(Signals,OS) {
             this.new  = function(path) {};
             this.write= function(path,data) {};
             this.mkdir= function(path) {};
+            this.stat = function(path) {};
 
             this.path_changed = new Signals.Signal("path","content");
 
