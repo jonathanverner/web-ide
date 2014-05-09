@@ -12,7 +12,8 @@
   },
   "devDependencies": {
     "grunt": "~0.4.4",
-    "grunt-http-server": "0.0.5"
+    "grunt-http-server": "0.0.5",
+    "grunt-exec": "~0.4.5"
   },
   "repository": {"type":"git", "url":"git://git@gandalf.temno.eu:web-ide.git"},
   "keywords": [

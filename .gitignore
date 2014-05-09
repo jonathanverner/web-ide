@@ -7,4 +7,6 @@ npm-debug.log
 ide.kdev4
 .kdev4
 *pyc
+log.txt
+synchronize.db
 lcov.info

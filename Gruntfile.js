@@ -23,11 +23,24 @@ module.exports = function(grunt) {
                     ]
                 }
             }
+        },
+        exec: {
+          serve: {
+              command: function (port, path) {
+                  if (port === undefined) port = '8000';
+                  if (path === undefined) path = './';
+                  return "python python/server.py "+port+" "+path;
+              }
+          }
         }
     });
 
-    grunt.loadNpmTasks('grunt-http-server');
-    grunt.registerTask('serve',['http-server:dev']);
+    //grunt.loadNpmTasks('grunt-http-server');
+    //grunt.registerTask('serve',['http-server:dev']);
+
+    grunt.loadNpmTasks('grunt-exec');
+
+
 
     // Load the Intern task
     grunt.loadNpmTasks('intern');
