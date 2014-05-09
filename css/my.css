@@ -1,3 +1,9 @@
+div.editor {
+  width:40%;
+  border: solid 1px;
+  margin:20px;
+}
+
 div.output {
   width:50%;
   height:300px;
