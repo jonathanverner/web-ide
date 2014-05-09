@@ -18,7 +18,9 @@ module.exports = function(grunt) {
                     runType: 'client', // defaults to 'client'
                     config: 'tests/intern',
                     reporters: [ 'console', 'lcov' ],
-                    suites: [ 'tests/MemStore' ]
+                    suites: [ 'tests/MemStore',
+                              'tests/FileSystem'
+                    ]
                 }
             }
         }

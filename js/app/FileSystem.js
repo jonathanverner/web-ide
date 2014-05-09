@@ -1,14 +1,17 @@
-define(["app/Signals","app/os"], function(Signals,OS) {
-    return {
-        FSException: function(message) {
-            this.message = message;
-            this.name = "FSException";
-            this.toString = function () { return this.name+":"+this.message;};
-        },
-        File: function(data) {
+define(["app/Signals","app/os","app/Store"], function(Signals,OS,Store) {
+    var FileModes = {
+        READ:0,
+        WRITE:1,
+        READWRITE:3,
+        APPEND:2
+    }
+
+    var File = function (data, mode) {
             var position=0;
             var cached_data = data;
             this.closed = false;
+            this.mode = mode;
+            if (this.mode === FileModes.APPEND ) position=data.length;
             this.close = function() {
                 this.flush();
                 this.closed = true;
@@ -42,12 +45,14 @@ define(["app/Signals","app/os"], function(Signals,OS) {
                             line += car
                             if(limit!==null && line.length>=limit){return line}
                             position++
+                        }
+                    }
                 }
-            }
-        }
-    };
+            };
+
             this.readlines = function(hint){
                 if(this.closed){throw new FSException('I/O operation on closed file');}
+                if (! this.readable() ){throw new FSException('Read operation on a non-readable file.');}
                 var x = cached_data.substr(position).split('\n')
                 if (hint && hint!==-1) {
                     var y=[],size=0
@@ -81,7 +86,15 @@ define(["app/Signals","app/os"], function(Signals,OS) {
             this.content_changed = new Signals.Signal("content");
             this.flushed         = new Signals.Signal("content");
 
+        };
+    return {
+        FSException: function(message) {
+            this.message = message;
+            this.name = "FSException";
+            this.toString = function () { return this.name+":"+this.message;};
         },
+        FileModes:FileModes,
+        File: File,
         FileSystem: function() {
             var mounts = [];
             var cwd = '/';
@@ -110,10 +123,25 @@ define(["app/Signals","app/os"], function(Signals,OS) {
                 st = find_store(path);
                 return st.store.ls(st.store_path);
             };
-            this.open = function(path) {
+            this.open = function(path, mode) {
+                if (mode === undefined) mode = FileModes.READ;
                 st = find_store(path);
+                if (st === undefined) throw new FSException("Invalid path: "+path);
+                stat = st.store.stat(st.store_path);
+                switch (mode) {
+                    case FileModes.READWRITE:
+                    case FileModes.WRITE:
+                        st.store.new(st.store_path,true);
+                        break;
+                    case FileModes.APPEND:
+                        if (stat.type == Store.TP.DIRECTORY) throw new FSException("File is a directory: "+path);
+                        if (stat.type == Store.TP.NONE) st.store.new(st.store_path)
+                        break;
+                    default:
+                        if (stat.type == Store.TP.NONE) throw new FSException("File does not exist: "+path);
+                }
                 data = st.store.cat(st.store_path);
-                pfile = new File(data);
+                pfile = new File(data,mode);
                 pfile.flushed.connect(function (content) {
                     st.store.write(st.store_path, content);
                 });
