@@ -27,9 +27,10 @@ define(function() {
 
 
             // Connects signal handler @slot to this signal
-            this.connect = function(slot) {
+            this.connect = function(slot, object) {
                 if (slot.length > arg_len) throw new SignalException("Wrong slot signature ("+slot.length+" instead of "+arg_len+").");
-                slots.push(slot);
+                slots.push({s:slot,o:object});
+                if (slot.__signals__ === undefined) slot.__signals__ = [];
                 slot.__signals__.push(this);
             }
             this.emit = function () {
@@ -38,7 +39,7 @@ define(function() {
                 for(i = 0; i < slots.length; i++) {
                         if ( recursion_check > 3 ) throw new SignalException("Recursion depth exceeded limit "+recursion_check);
                         recursion_check++;
-                        slots[i].apply(arguments);
+                        slots[i].s.apply(slots[i].o,arguments);
                         recursion_check--;
 
                 }
@@ -46,7 +47,7 @@ define(function() {
             this.disconnect = function(slot) {
                 var i,nslots = [];
                 for(i = 0; i < slots.length; i++) {
-                    if (! slots[i] === slot) nslots.push(slots[i]);
+                    if (! slots[i].s === slot) nslots.push(slots[i]);
                 }
                 slots = nslots;
             }
