@@ -15,7 +15,10 @@
     "grunt-http-server": "0.0.5",
     "grunt-exec": "~0.4.5"
   },
-  "repository": {"type":"git", "url":"git://git@gandalf.temno.eu:web-ide.git"},
+  "repository": {
+    "type": "git",
+    "url": "git://git@gandalf.temno.eu:web-ide.git"
+  },
   "keywords": [
     "IDE",
     "Python",
