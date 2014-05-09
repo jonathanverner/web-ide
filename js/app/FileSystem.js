@@ -89,7 +89,7 @@ define(["app/Signals","app/os"], function(Signals,OS) {
                 }
                 var ret = { 'store':undefined, store_path:path }, match_len = 0;
                 for(i=0; i < mounts.length; i++) {
-                    if ( mounts[i].length > match_len && path.search(mounts[i].mount_point) == 0 ) {
+                    if ( mounts[i].mount_point.length > match_len && path.search(mounts[i].mount_point) == 0 ) {
                         ret.store = mounts[i].store;
                         match_len = mounts[i].mount_point.length;
                     }
