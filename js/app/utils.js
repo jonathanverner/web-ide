@@ -1,4 +1,4 @@
-define(function () {
+define(["jquery"], function (jquery) {
     var lstrip = function (string, chars) {
             if (chars === undefined) chars = " \n\t";
             var i;
@@ -24,10 +24,39 @@ define(function () {
         for(i=0;i<slen && i < plen && string[slen-i] == prefix[plen-i]; i++);
         return (i == prefix.length);
     }
+    var enc64 = function(obj) {
+        return btoa(encodeURIComponent(escape(JSON.stringify(obj))));
+    }
+    var dec64 = function(string) {
+        return JSON.parse(unescape(decodeURIComponent(atob(string))));
+    }
+    var randstr = function (length) {
+        var chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        var result = '';
+        for (var i = length; i > 0; --i) result += chars[Math.round(Math.random() * (chars.length - 1))];
+        return result;
+    }
+    var server_log = function (msg) {
+        console.log(msg);
+        return true;
+        jquery.ajax({
+                url:'/log/',
+                data:{
+                    message:msg,
+                },
+                dataType:"text",
+                    type:'POST'
+        }).done(function() {});
+    }
+
     return {
         lstrip:lstrip,
         rstrip:rstrip,
         strip:strip,
-        startswith:startswith
+        startswith:startswith,
+        enc64:enc64,
+        dec64:dec64,
+        randstr:randstr,
+        server_log:server_log
     }
 });
