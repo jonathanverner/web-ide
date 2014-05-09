@@ -9,7 +9,7 @@ define(["app/Signals","app/os"], function(Signals,OS) {
         if (ex in EX_MESSAGES) {
             return EX_MESSAGES[ex];
         } else {
-            return "Unknown/Other Exception"+ex;
+            return "Unknown/Other Exception "+ex;
         }
     };
     return {

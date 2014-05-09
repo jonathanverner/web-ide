@@ -1,4 +1,5 @@
 define(["app/Store","app/os","app/utils"],function (Store,OS,utils) {
+
     function MemStore() {
         Store.Store(this);
         var root = {

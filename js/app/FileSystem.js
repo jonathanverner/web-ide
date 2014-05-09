@@ -17,29 +17,31 @@ define(["app/Signals","app/os"], function(Signals,OS) {
             };
             this.flush = function() {this.flushed.emit(cached_data);};
             this.read = function(sz) {
-        if (this.closed){throw new FSException('I/O operation on closed file');}
-        if (sz===undefined){return cached_data}
-        else {
-            position += sz;
-            return cached_data.substr(position-sz,sz);
-        };
-    };
-            this.readable = function(){return true};
+                if (this.closed){throw new FSException('I/O operation on closed file');}
+                if (! this.readable() ){throw new FSException('Read operation on a non-readable file.');}
+                if (sz===undefined){return cached_data}
+                else {
+                    position += sz;
+                    return cached_data.substr(position-sz,sz);
+                };
+            };
+            this.readable = function(){return (!(this.mode === FileModes.WRITE))};
 
             // Maybe move to PythonFile ?
             this.readline = function(limit){
-        if(this.closed){throw new FSException('I/O operation on closed file');}
-        var line = ''
-        if(limit===undefined||limit===-1){limit=null}
-        while(true){
-            if(position>=cached_data.length-1){break;}
-            else{
-                var car = cached_data.charAt(position)
-                if(car=='\n'){position++;return line}
-                else{
-                    line += car
-                    if(limit!==null && line.length>=limit){return line}
-                    position++
+                if(this.closed){throw new FSException('I/O operation on closed file');}
+                if (! this.readable() ){throw new FSException('Read operation on a non-readable file.');}
+                var line = ''
+                if(limit===undefined||limit===-1){limit=null}
+                while(true){
+                    if(position>=cached_data.length-1){break;}
+                    else {
+                        var car = cached_data.charAt(position)
+                        if(car=='\n'){position++;return line}
+                        else {
+                            line += car
+                            if(limit!==null && line.length>=limit){return line}
+                            position++
                 }
             }
         }
