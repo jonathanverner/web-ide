@@ -47,25 +47,25 @@ define(["app/Signals","app/os"], function(Signals,OS) {
         }
     };
             this.readlines = function(hint){
-        if(this.closed){throw new FSException('I/O operation on closed file');}
-        var x = cached_data.substr(position).split('\n')
-        if(hint && hint!==-1){
-            var y=[],size=0
-            while(true){
-                var z = x.shift()
-                y.push(z)
-                size += z.length
-                if(size>hint || x.length==0){return y}
-            }
-        }else{return x}
-    };
-            this.seek = function(offset,whence){
-        if(this.closed){throw new FSException('I/O operation on closed file');}
-        if(whence===undefined){whence=0}
-        if(whence===0){position = offset}
-        else if(whence===1){position += offset}
-        else if(whence===2){position = cached_data.length+offset}
-    };
+                if(this.closed){throw new FSException('I/O operation on closed file');}
+                var x = cached_data.substr(position).split('\n')
+                if (hint && hint!==-1) {
+                    var y=[],size=0
+                    while(true) {
+                        var z = x.shift()
+                        y.push(z)
+                        size += z.length
+                        if(size>hint || x.length==0){return y}
+                    }
+                } else {return x}
+            };
+            this.seek = function(offset,whence) {
+                if(this.closed){throw new FSException('I/O operation on closed file');}
+                if(whence===undefined){whence=0}
+                if(whence===0){position = offset}
+                else if(whence===1){position += offset}
+                else if(whence===2){position = cached_data.length+offset}
+            };
             this.seekable = function(){return true};
             this.tell = function(){return position};
             this.writeable = function(){return true};
