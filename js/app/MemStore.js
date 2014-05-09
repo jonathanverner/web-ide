@@ -54,10 +54,13 @@ define(["app/Store","app/os","app/utils"],function (Store,OS,utils) {
             return ret;
         }
 
-        this.new = function(path) {
+        this.new = function(path,truncate) {
             var node = find_parent(path);
             var name = basename(path);
-            if ( name in node.content ) throw new Store.StoreException(Store.Exceptions.FILE_EXISTS);
+            if ( name in node.content ) {
+                if (! truncate ) throw new Store.StoreException(Store.Exceptions.FILE_EXISTS);
+                if ( node.content[name].dir ) throw new Store.StoreException(Store.Exceptions.FILE_IS_DIR);
+            }
             node.content[name]= { dir:false, content:"" };
         }
 

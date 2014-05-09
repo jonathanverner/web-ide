@@ -35,7 +35,7 @@ define(["app/Signals","app/os"], function(Signals,OS) {
             this.mv   = function(patha,pathb) {};
             this.ls   = function(path) {};
             this.rm   = function(path) {};
-            this.new  = function(path) {};
+            this.new  = function(path,truncate) {};
             this.write= function(path,data) {};
             this.mkdir= function(path) {};
             this.stat = function(path) {};

@@ -28,6 +28,28 @@ define([
             st.write('/test',data);
             stat_test = st.stat('/test');
             assert.strictEqual(stat_test.size, data.length, "write('/test',data) should make /test a file of size data.length");
+        },
+
+        truncate: function () {
+            var st = new MS.MemStore(), data = "AHOJ";
+            st.mkdir("/tt");
+            st.new("/test");
+            st.write("/test",data);
+
+            try {
+                st.new("/tt",true);
+                assert.Fail(undefined,new Store.StoreException(),"Cannot truncate a directory.");
+            } catch (e) {
+            }
+
+            try {
+                st.new("/test");
+                assert.Fail(undefined,new Store.StoreException(),"Cannot create an old file (without truncating it).");
+            } catch (e) {
+            }
+
+            st.new("/test",true);
+            assert.strictEqual(st.cat("/test"),"","Truncated file should be empty");
         }
 
     });
