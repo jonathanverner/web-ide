@@ -1,7 +1,7 @@
-bower_components
-external
-node_modules
-skulpt
+old/bower_components
+old/external
+old/node_modules
+old/skulpt
 lcov.info
 npm-debug.log
 ide.kdev4
@@ -10,3 +10,9 @@ ide.kdev4
 log.txt
 synchronize.db
 lcov.info
+dist
+.tmp
+.sass-cache
+app/bower_components
+node_modules
+

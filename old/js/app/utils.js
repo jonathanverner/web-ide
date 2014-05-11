@@ -54,6 +54,7 @@ define(["jquery"], function (jquery) {
         rstrip:rstrip,
         strip:strip,
         startswith:startswith,
+        endswith:endswith,
         enc64:enc64,
         dec64:dec64,
         randstr:randstr,
