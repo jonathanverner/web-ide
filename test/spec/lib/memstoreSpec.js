@@ -86,7 +86,40 @@ define(['lib/memstore'], function(lib) {
             var stat = st.stat("/test");
             expect(stat.type).toEqual(st.NONE);
         });
-
+        it("mv should move into if target is a directory", function () {
+            st.mkdir("/target");
+            st.mkdir("/source");
+            st.new("/source/a");
+            st.mv("/source","/target");
+            var stgt = st.stat("/target/source/a"), stsrc = st.stat("/source");
+            expect(sttgt.type).toEqual(st.FILE);
+            expect(stsrc.type).toEqual(st.NONE);
+        });
+        it("mv should overwrite target, if it is a file", function () {
+            st.new("/target");
+            st.mkdir("/source");
+            st.new("/source/a");
+            st.mv("/source","/target");
+            var stgt = st.stat("/target/a"), stsrc = st.stat("/source");
+            expect(sttgt.type).toEqual(st.FILE);
+            expect(stsrc.type).toEqual(st.NONE);
+        });
+        it("mv should create target, if it does not exist", function () {
+            st.mkdir("/source");
+            st.new("/source/a");
+            st.mv("/source","/target");
+            var stgt = st.stat("/target/a"), stsrc = st.stat("/source");
+            expect(sttgt.type).toEqual(st.FILE);
+            expect(stsrc.type).toEqual(st.NONE);
+        });
+        it("mv should fail to move a non existant source or into a nonexistant target", function () {
+            st.mkdir("/source");
+            st.new("/source/a");
+            expect( function () { st.mv("/source","/target/test"); } ).toThrow();
+            expect( function () { st.mv("/nonexsistant","/source"); } ).toThrow();
+            var stsrc = st.stat("/source/a");
+            expect(stsrc.type).toEqual(st.FILE);
+        });
     });
 
 });
