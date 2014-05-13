@@ -4,6 +4,7 @@ import sqlite3
 import time
 import json
 import sys
+import os
 
 app = bottle.app()
 MAX_MSG_LEN = 2**10000
@@ -86,4 +87,10 @@ if __name__ == "__main__":
         static_root = sys.argv[2]
     except:
         static_root = './'
+
+    pid = open('server-'+str(port)+'.pid','w');
+    pid.write(str(os.getpid()))
+    pid.flush();
+    pid.close();
+
     bottle.run(app=app,host='127.0.0.1',port=port,reloader=True)

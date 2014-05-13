@@ -390,9 +390,35 @@ module.exports = function (grunt) {
           }
         }
       }
+    },
+    exec: {
+          pythonserverbg: {
+              command: function (port, path) {
+                  if (port === undefined) port = '8000';
+                  if (path === undefined) path = './app';
+                  return "python python/server.py "+port+" "+path +" &";
+              },
+          },
+          pythonserver: {
+              command: function (port, path) {
+                  if (port === undefined) port = '8000';
+                  if (path === undefined) path = './';
+                  return "python python/server.py "+port+" "+path;
+              },
+          },
+          stopserver: {
+              stdout:false,
+              stderr:false,
+              command: function (port) {
+                  if (port === undefined) port = '8000';
+                  return "kill `cat server-"+port+".pid`; rm server-"+port+".pid;";
+              },
+              exitCodes:[0,1]
+          }
     }
   });
 
+  grunt.loadNpmTasks('grunt-exec');
 
   grunt.registerTask('serve', function (target) {
     if (target === 'dist') {
