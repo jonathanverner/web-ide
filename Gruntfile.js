@@ -36,7 +36,7 @@ module.exports = function (grunt) {
       },
       jsTest: {
         files: ['test/spec/{,*/}*.js'],
-        tasks: ['newer:jshint:test', 'karma']
+        tasks: ['newer:jshint:test', 'karma:unit']
       },
       compass: {
         files: ['<%= yeoman.app %>/styles/{,*/}*.{scss,sass}'],
@@ -346,6 +346,11 @@ module.exports = function (grunt) {
       unit: {
         configFile: 'karma.conf.js',
         singleRun: true
+      },
+      debug: {
+        configFile: 'karma.conf.js',
+        browsers: ['Chrome'],
+        singleRun: false
       }
     },
 
@@ -426,6 +431,8 @@ module.exports = function (grunt) {
     }
 
     grunt.task.run([
+      'exec:stopserver',
+      'exec:pythonserverbg',
       'clean:server',
       'bower-install',
       'concurrent:server',
@@ -440,13 +447,18 @@ module.exports = function (grunt) {
     grunt.task.run(['serve:' + target]);
   });
 
-  grunt.registerTask('test', [
-    'clean:server',
-    'concurrent:test',
-    'autoprefixer',
-    'connect:test',
-    'karma'
-  ]);
+  grunt.registerTask('test', function (debug) {
+    if (debug === undefined) debug='unit';
+    grunt.task.run([
+      'exec:stopserver',
+      'exec:pythonserverbg',
+      'clean:server',
+      'concurrent:test',
+      'autoprefixer',
+      'connect:test',
+      'karma:'+debug
+    ]);
+  });
 
   grunt.registerTask('build', [
     'clean:dist',
