@@ -99,8 +99,13 @@ define(["lib/utils", "lib/exceptions", "lib/os", "lib/store"], function(utils,EX
             var fs = private_stat(path_f),
                 ts = private_stat(path_t);
             if ( fs.type === Store.NONE ) throw new Exc(Store.FILE_NOT_FOUND);
-            if ( ts.type === Store.DIRECTORY ) throw new Exc(Store.FILE_IS_DIR);
-            ts.parent.content[ts.basename] = fs.node;
+            if ( ts.type === Store.DIRECTORY ) {
+                if (! (fs.basename in ts.node.content) || ! ts.node.content[fs.basename].dir ) {
+                    ts.node.content[fs.basename] = fs.node;
+                } else throw new Exc(Store.FILE_IS_DIR);
+            } else {
+                ts.parent.content[ts.basename] = fs.node;
+            }
             delete fs.parent.content[fs.basename];
         }
 
