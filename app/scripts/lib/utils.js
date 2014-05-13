@@ -52,6 +52,12 @@ define(function() {
         return true;
     }
 
+    var isWorker = function () {
+        var isBrowser = !!(typeof window !== 'undefined' && typeof navigator !== 'undefined' && window.document);
+        var isWebWorker = !isBrowser && typeof importScripts !== 'undefined';
+        return isWebWorker;
+    }
+
     var ret = {
         lstrip:lstrip,
         rstrip:rstrip,
@@ -62,7 +68,8 @@ define(function() {
         dec64:dec64,
         randstr:randstr,
         server_log:server_log,
-        add_properties:add_properties
+        add_properties:add_properties,
+        isWorker:isWorker,
     }
 
     add_properties(ret, consts);
