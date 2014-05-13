@@ -91,7 +91,7 @@ define(['lib/memstore'], function(lib) {
             st.mkdir("/source");
             st.new("/source/a");
             st.mv("/source","/target");
-            var stgt = st.stat("/target/source/a"), stsrc = st.stat("/source");
+            var sttgt = st.stat("/target/source/a"), stsrc = st.stat("/source");
             expect(sttgt.type).toEqual(st.FILE);
             expect(stsrc.type).toEqual(st.NONE);
         });
@@ -100,7 +100,7 @@ define(['lib/memstore'], function(lib) {
             st.mkdir("/source");
             st.new("/source/a");
             st.mv("/source","/target");
-            var stgt = st.stat("/target/a"), stsrc = st.stat("/source");
+            var sttgt = st.stat("/target/a"), stsrc = st.stat("/source");
             expect(sttgt.type).toEqual(st.FILE);
             expect(stsrc.type).toEqual(st.NONE);
         });
@@ -108,7 +108,7 @@ define(['lib/memstore'], function(lib) {
             st.mkdir("/source");
             st.new("/source/a");
             st.mv("/source","/target");
-            var stgt = st.stat("/target/a"), stsrc = st.stat("/source");
+            var sttgt = st.stat("/target/a"), stsrc = st.stat("/source");
             expect(sttgt.type).toEqual(st.FILE);
             expect(stsrc.type).toEqual(st.NONE);
         });
