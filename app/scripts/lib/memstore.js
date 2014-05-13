@@ -63,12 +63,14 @@ define(["lib/utils", "lib/exceptions", "lib/os", "lib/store"], function(utils,EX
             return ret;
         }
 
+        /* *******************************************************
+         *                   PUBLIC INTERFACE                    *
+         * *******************************************************/
         this.cat = function(path) {
             var node = find_node(root, OS.resolve(path));
             if ( node.dir ) throw new Exc(Store.FILE_IS_DIR);
             return node.content;
         }
-
         this.ls = function(path) {
             var node = find_node(root, OS.resolve(path)), ret = [];
             if ( ! node.dir ) throw new Exc(Store.NOT_A_DIR);
@@ -77,7 +79,6 @@ define(["lib/utils", "lib/exceptions", "lib/os", "lib/store"], function(utils,EX
             }
             return ret;
         }
-
         this.new = function(path,truncate) {
             var pstat = private_stat(path);
             if ( ! (pstat.type === Store.NONE ) && ! truncate ) throw new Exc(Store.FILE_EXISTS);
@@ -86,7 +87,6 @@ define(["lib/utils", "lib/exceptions", "lib/os", "lib/store"], function(utils,EX
             pstat.parent.content[pstat.basename] = {dir:false,content:""};
             return;
         }
-
         this.stat = function(path) {
             var ret = private_stat(path);
             return {
@@ -94,10 +94,10 @@ define(["lib/utils", "lib/exceptions", "lib/os", "lib/store"], function(utils,EX
                 size:ret.size
             };
         }
-
         this.mv = function(path_f, path_t) {
             var fs = private_stat(path_f),
                 ts = private_stat(path_t);
+
             if ( fs.type === Store.NONE ) throw new Exc(Store.FILE_NOT_FOUND);
             if ( ts.type === Store.DIRECTORY ) {
                 if (! (fs.basename in ts.node.content) || ! ts.node.content[fs.basename].dir ) {
@@ -108,7 +108,6 @@ define(["lib/utils", "lib/exceptions", "lib/os", "lib/store"], function(utils,EX
             }
             delete fs.parent.content[fs.basename];
         }
-
         this.write = function(path,data) {
             var node = find_node(root,OS.resolve(path));
             if ( node.dir ) throw new Exc(Store.FILE_IS_DIR);
@@ -127,7 +126,6 @@ define(["lib/utils", "lib/exceptions", "lib/os", "lib/store"], function(utils,EX
             if ( stat.size > 0 ) throw new Exce(Store.DIRECTORY_NOT_EMPTY);
             delete stat.parent.content[stat.basename];
         }
-
         this.rm = function (path) {
             var stat = private_stat(path);
             if ( stat.type === Store.NONE ) throw new Exc(Store.FILE_NOT_FOUND);

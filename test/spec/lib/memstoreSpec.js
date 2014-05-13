@@ -42,15 +42,15 @@ define(['lib/memstore'], function(lib) {
             expect(stat.type).toEqual(st.DIRECTORY);
             expect(stat.size).toEqual(files.length);
         });
-        it('Truncating a directory should be impossible', function () {
+        it('new should not truncate a directory', function () {
            st.mkdir("/tt");
            expect( function () { st.new("/tt",true); } ).toThrow();
         });
-        it('Create on old file without explicit truncate should fail', function () {
+        it('new should not create on old file without explicit truncate', function () {
             st.new("/tt");
             expect( function () { st.new("/tt"); } ).toThrow();
         });
-        it('Truncated file should be empty', function () {
+        it('new should make file empty when truncating', function () {
             var data = "ahoj";
             st.new("/tt");
             st.write("/tt",data);
