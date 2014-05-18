@@ -76,6 +76,14 @@ def post_message(channel):
     save_msg(channel, msg)
     bottle.response.status=201
 
+@bottle.route('/ping/',method='POST')
+def test_post():
+    ret = {}
+    for field in bottle.request.forms:
+        ret[field] = bottle.request.forms[field];
+    return json.dumps(ret);
+
+
 initdb()
 
 if __name__ == "__main__":
