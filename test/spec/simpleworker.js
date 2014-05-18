@@ -3,15 +3,17 @@ importScripts('/base/node_modules/requirejs/require.js');
 require({
   baseUrl:'/base/app/scripts/',
   paths: {
-      'lib':'lib',
+      'lib':'lib'
   }
 },
-['/base/app/scripts/lib/channel.js'],
-function (com) {
-     var on_recv = function (data, id) {
+['/base/app/scripts/lib/channel.js', 'lib/logger'],
+function (com,log) {
+     var logger = log.register("simpleworker");
+     var on_recv = function recv(data, id) {
             switch (data) {
                 case 'ping':
-                    com.parent.reply_to('pong', id);
+                    logger.log("Received ping, sending response", log.DEBUG);
+                    com.parent.reply('pong', id);
                     break;
                 case 'sync':
                     var id = com.parent.send('sync',com.SYNC_REPLY);
@@ -21,5 +23,6 @@ function (com) {
             }
      };
      com.parent.received.connect(on_recv);
+     com.parent.connect();
      return com;
 });

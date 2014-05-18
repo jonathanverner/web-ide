@@ -47,6 +47,10 @@ def load_msgs(channel):
     return ret
 
 
+@bottle.hook('after_request')
+def enable_cors():
+    bottle.response.headers['Access-Control-Allow-Origin'] = '*'
+
 @bottle.route('/static/log/',method='POST')
 @bottle.route('/log/',method='POST')
 def logg():

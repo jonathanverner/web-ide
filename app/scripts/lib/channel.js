@@ -1,26 +1,274 @@
 // Channel
-define(["require","lib/utils", "lib/exceptions", "lib/signals"], function(require, utils, EX, sig) {
+define(["require","lib/utils", "lib/logger", "lib/exceptions", "lib/signals"], function(require, utils, log, EX, sig) {
     'use strict';
 
     var consts = {
         SYNC_URL:'/synchronize',
         NO_REPLY:0,
         ASYNC_REPLY:1,
-        SYNC_REPLY:2
+        SYNC_REPLY:2,
+        _SYSTEM_CONNECT:3,
+        _SEND_BROWSER:4,
+        _SEND_SERVER:5,
+        _UNKNOWN_MSG_TYPE:6
     };
 
-    var Channel = function (worker, sync_url) {
+    var Exc = EX.register("channel"),
+        logger = log.register("channel");
 
-        this.send = function(msg, reply_type) {};
-        this.reply = function(msg, reply_to) {};
-        this.wait = function(reply_to) {};
+    var Channel = function (worker, sync_url, channel_id) {
 
+        /**********************************************
+         *              PRIVATE VARIABLES             *
+         **********************************************/
+        var cid = channel_id,
+            last_message_id=0,
+            is_connected = false,
+            in_msg_queue = [],
+            out_msg_queue = [],
+            sync_replies = [],
+            self = this;
+
+        var Message = function (type, payload, reply_to, send_type) {
+            var self = this;
+            this.processed = false;
+            if ( send_type === undefined ) send_type = consts._SEND_BROWSER;
+            if ( reply_to === undefined ) reply_to = -1;
+            if ( typeof type == "number" ) {
+                this.type = type;
+                this.payload = payload;
+                this.reply_to = reply_to;
+                this.id = last_message_id++;
+            } else {
+                try {
+                    var dec = utils.dec64(type);
+                    this.type = dec.type;
+                    this.payload = dec.payload;
+                    this.reply_to = dec.reply_to;
+                    this.id = dec.id;
+                } catch (e) {
+                    this.type = consts._UNKNOWN_MSG_TYPE;
+                    this.payload = type;
+                    this.id = null;
+                    this.reply_to = null;
+                }
+            }
+            this.send = function () {
+                var msg_data = utils.enc64(this);
+                logger.log("Message.send:"+JSON.stringify(this), log.DEBUG);
+                if ( send_type == consts._SEND_BROWSER ) {
+                    if (worker) worker.postMessage(msg_data)
+                    else postMessage(msg_data);
+                } else if ( send_type == consts._SEND_SERVER ) {
+                    utils.ajax({
+                        context:this,
+                        url:sync_url+'/'+cid+'/',
+                        data:{
+                            message:msg_data
+                        },
+                        type:'POST'
+                    }, function (req, status, error) {
+                        logger.log("ERROR SENDING MESSAGE "+self.id+"; STATUS:"+status+"; ERROR:"+error,log.ERROR);
+                        logger.log("ORIGINAL MESSAGE: " + JSON.stringify(this), log.ERROR);
+                        throw new Exc("Synchronize server: error sending message "+error);
+                    });
+                } else throw new Exc("Unknown send type"+send_type);
+            }
+        }
+
+        /**********************************************
+         *              PRIVATE METHODS               *
+         **********************************************/
+
+        var send_connect_msg = function() {
+            var msg = new Message(consts._SYSTEM_CONNECT,{ sync_url:sync_url, cid:cid }, consts._SEND_BROWSER);
+            msg.send();
+        }
+
+        var processQueues = function() {
+            var i, m;
+            /* INPUT QUEUE */
+            for(i=0;i < in_msg_queue.length; i++) {
+                m = in_msg_queue[i];
+                if (m.processed) continue;
+                m.processed = true;
+                switch(m.type) {
+                    case consts._SYSTEM_CONNECT:
+                        if ( worker ) {
+                            logger.log("Child trying to connect", log.DEBUG);
+                            if (m.payload.sync_url === sync_url && m.payload.cid === cid ) {
+                                logger.log("Child successfully connected", log.DEBUG);
+                                is_connected = true;
+                                self.connected.emit();
+                            } else send_connect_msg();
+                        } else {
+                            cid = m.payload.cid;
+                            sync_url = m.payload.sync_url;
+                            var r = new Message(consts._SYSTEM_CONNECT,{cid:cid,sync_url:sync_url},m.id);
+                            is_connected = true;
+                            r.send();
+                            self.connected.emit();
+                        }
+                        break;
+                    case consts.SYNC_REPLY:
+                        sync_replies.push(m.id);
+                        self.received.emit(m.payload, m.id, m.reply_to);
+                    case consts._UNKNOWN_MSG_TYPE:
+                        break;
+                    default:
+                        self.received.emit(m.payload, m.id, m.reply_to);
+                }
+            }
+            in_msg_queue = []
+
+            /* OUTPUT QUEUE */
+            if ( ! is_connected ) self.connect();
+            else {
+                for(i=0;i<out_msg_queue.length; i++) {
+                    if (out_msg_queue[i].processed) continue;
+                    out_msg_queue[i].processed = true;
+                    out_msg_queue[i].send();
+                }
+                out_msg_queue = []
+            }
+        }
+
+        var messageHandler = function (event) {
+            var msg = new Message(event.data);
+            logger.log("Received msg:"+JSON.stringify(msg.payload), log.DEBUG);
+            in_msg_queue.push(msg);
+            processQueues();
+        }
+
+        /**********************************************
+         *              PUBLIC METHODS               *
+         **********************************************/
+
+        /* Send a message with payload @msg. @reply_type
+         * is either
+         *
+         *  -- ASYNC_REPLY ... we expect an asynchronous reply
+         *  -- SYNC_REPLY  ... we expect a synchronous reply
+         *  -- NO_REPLY    ... no reply is expected
+         *
+         * Returns the id of the message sent (useful for
+         * waiting for replies);*/
+        this.send = function(msg, reply_type) {
+            var msg = new Message(reply_type, msg);
+            out_msg_queue.push(msg);
+            processQueues();
+            return msg.id;
+        };
+
+        /* Reply to a message with id @reply_to;
+         * payload is in @msg */
+        this.reply = function(msg, reply_to) {
+            var send_type;
+            var pos = sync_replies.indexOf(reply_to);
+            if ( pos >= 0 ) {
+                send_type = consts._SEND_SERVER;
+                sync_replies.splice(pos,1);
+            } else send_type = consts._SEND_BROWSER;
+            logger.log("Replying to "+reply_to+" via "+ ((send_type === consts._SEND_BROWSER) ? 'browser' :'server')+" with "+ msg, log.DEBUG);
+            var m = new Message( consts.NO_REPLY, msg, reply_to, send_type );
+            out_msg_queue.push(m);
+            processQueues();
+        };
+
+        /* Synchronously waits until a reply to
+         * the message with id @reply_to arrives
+         *
+         * WARNING: Currently does not work from the
+         * main thread !!!
+         */
+        this.wait = function(reply_to, on_reply) {
+            if ( typeof on_reply === "function" ) {
+                var waiter = function WAITER( data, reply_id, msg_reply_to ) {
+                    if ( reply_to === msg_reply_to ) on_reply(data, reply_id, msg_reply_to);
+                    this.received.disconnect(waiter);
+                };
+                this.received.connect(waiter, this);
+            } else {
+                var in_msgs, msg, got_reply, reply, req,i;
+                var timeout = worker ? 1000 : -1,
+                    start   = new Date(),
+                    now     = 0;
+                if ( typeof on_reply === "number" ) timeout = timeout;
+                if (! is_connected ) throw new Exc("Cannot wait, not yet connected");
+                while (true) {
+                    req = new XMLHttpRequest();
+                    req.open('GET', sync_url+'/'+cid+'/',false);
+                    req.send(null);
+                    if ( req.status === 200 ) {
+                        in_msgs = JSON.parse(req.responseText);
+                        got_reply = false;
+                        for(i=0;i<in_msgs.length;i++) {
+                            msg = new Message(in_msgs[i]);
+                            logger.log("Got sync message"+JSON.stringify(msg), log.DEBUG);
+                            if ( msg.reply_to === reply_to ) {
+                                got_reply = true;
+                                reply = msg.payload;
+                            } else in_msg_queue.push(msg);
+                        }
+                        if (got_reply) return reply;
+                    } else {
+                        logger.log("Server Error ("+req.status+"):"+req.responseText,log.ERROR);
+                    }
+                    if ( timeout >= 0 ) {
+                        now = new Date();
+                        if ( now-start > timeout ) throw new Exc("wait: Timeout waiting for reply to "+reply_to);
+                    }
+                    utils.sleep(250);
+                }
+            };
+        };
+
+        /* Terminates the remote worker.
+         *
+         * Note: The channel is unusable afterwards */
+        this.terminate = function () {
+            if ( worker ) worker.terminate;
+        };
+
+
+        /* Attempt connection to parent.
+         *
+         * Note: To be called when child is ready to accept messages.
+         */
+        this.connect = function() {
+            if ( (! is_connected) && (! worker)) send_connect_msg();
+        }
+
+
+        /**********************************************
+         *              PUBLIC SIGNALS                *
+         **********************************************/
+        /* Fired when a message arrives with payload in @data,
+         * id of the message in @id and the id of the message
+         * to which it is a reply (if any) in @reply_to */
         this.received = new sig.Signal("data","id", "reply_to");
-        this.terminate = function () {};
 
+        /* Fired when a connection with the other side is
+         * established */
+        this.connected = new sig.Signal();
+
+
+        /**********************************************
+         *              INITIALIZATION                *
+         **********************************************/
+        if ( worker ) {
+            if ( ! cid ) cid = utils.randstr(32);
+            logger.prefix = '(parent) ';
+            logger.log("Registering parent message handler", log.DEBUG);
+            worker.onmessage = messageHandler;
+        } else {
+            logger.prefix = '(child) ';
+            logger.log("Registering child message handler", log.DEBUG);
+            onmessage = messageHandler;
+        }
     };
 
-    var Exc = EX.register("channel");
+
 
 
     var is_a_webworker = utils.isWorker();
@@ -62,312 +310,3 @@ define(["require","lib/utils", "lib/exceptions", "lib/signals"], function(requir
 
     return ret;
 });
-
-
-// define(["jquery","app/utils"], function (jquery,utils) {
-//     var Types = {
-//         RPC:0,  /* Remote Procedure Call */
-//         RPR:1,  /* Remote Procedure Result */
-//         CONNECT:2,
-//         ERROR:3 /* Error */
-//     }
-//     var CallTypes = {
-//         SYNC:0,
-//         ASYNC:1,
-//         DISCARD:2
-//     }
-//     var base_chan_id = utils.randstr(30);
-//     var num_chans = 0;
-//     return {
-//         SyncUrl:'/synchronize',
-//         CallTypes:CallTypes,
-//         Channel: function (worker, sync_url, chanid) {
-//
-//             /**********************************************
-//              *              PRIVATE VARIABLES             *
-//              **********************************************/
-//
-//             var local_sync_methods = {},
-//                 local_async_methods = {},
-//                 result_handlers = {},
-//                 last_message_id = 0,
-//                 connected = false,
-//                 out_msg_queue = [],
-//                 in_msg_queue = [],
-//                 self = this;
-//
-//             /**********************************************
-//              *              PRIVATE METHODS               *
-//              **********************************************/
-//
-//             /* Attempt connection to slave.
-//              *
-//              * Note: Only does anything in the master
-//              */
-//             var connect = function() {
-//                 if (worker) {
-//                     var connect_msg = {type:Types.CONNECT,data:{sync_url:sync_url,channel_id:self.channel_id},sync:CallTypes.DISCARD};
-//                     addMSGID(connect_msg);
-//                     doPostMSG(connect_msg);
-//                 }
-//             }
-//
-//             /* Adds a unique message id to the message.
-//              *
-//              * Implementation Note: This id is composed of a channel id
-//              * (a random string+a number) concatenated with the message
-//              * sequence number.
-//              */
-//             var addMSGID = function(msg) {
-//                 if ( (! ('id' in msg) ) && connected ) {
-//                     msg.id = self.channel_id+':'+String(last_message_id++);
-//                 }
-//                 return msg.id;
-//             }
-//
-//             /* Send the message @msg. If @through_server is true,
-//              *
-//              * send it through the server.
-//              *
-//              * Note: If we are not connected yet, the message will
-//              * be queued for later.
-//              *
-//              * Implementation Note: The actual sending is done in doPostMSG;
-//              */
-//             var postMSG = function(msg, through_server) {
-//                 var ret =  addMSGID(msg);
-//                 out_msg_queue.push({m:msg,s:through_server});
-//                 if (connected) processOUTQueue();
-//                 else connect();
-//                 return ret
-//             }
-//
-//             /* If connected, send all the messages in the outgoing queue.
-//              *
-//              * Implementation Note: The actual sending is done in doPostMSG;
-//              */
-//             var processOUTQueue = function () {
-//                 var i;
-//                 if ( connected ) {
-//                     while ( item = out_msg_queue.pop() ) doPostMSG(item.m,item.s);
-//                 }
-//
-//             }
-//
-//             /* Actually send the message @msg, either through a server (via AJAX)
-//              * if @through_server is true or by calling postMessage.
-//              *
-//              * Note: The message JSON.stringified and base64 encoded for transport.*/
-//             var doPostMSG = function(msg,through_server) {
-//                 var message = utils.enc64(msg);
-//                 if (through_server) {
-//                     jquery.ajax({
-//                         url:sync_url+'/'+self.channel_id+'/',
-//                         data:{
-//                             message:message,
-//                         },
-//                         dataType:"text",
-//                         type:'POST'
-//                     }).fail(function (req, status, error) {
-//                         console.log("ERROR SENDING MESSAGE "+msg.id+"; STATUS:"+status+"; ERROR:"+error);
-//                         console.log("ORIGINAL MESSAGE: " + JSON.stringify(msg));
-//                         throw error;
-//                     });
-//                 } else {
-//                     if (worker === null) postMessage(msg);
-//                     else worker.postMessage(msg);
-//                 }
-//             }
-//
-//             /* Sends @result as a response to message @msg.
-//              *
-//              * If @msg.sync is
-//              *
-//              *   -- CallTypes.DISCARD then it discards @result and does nothing
-//              *   -- CallTypes.ASYNC then it sends it via postMessage (i.e. in browser)
-//              *   -- CallTypes.SYNC then it sends it through a through_server
-//              */
-//             var postResult = function(msg, result) {
-//                 var message = {
-//                     type:Types.RPR,
-//                     reply_to:msg.id,
-//                     data:result
-//                 }
-//                 if ( msg.sync === CallTypes.DISCARD ) return;
-//                 postMSG( message, msg.sync === CallTypes.SYNC);
-//             }
-//
-//             /* Sends an indication that the message @msg, which was
-//              * received, resulted in an error */
-//             var postError = function(msg, error) {
-//                 var message = {
-//                     type:Types.ERROR,
-//                     reply_to:msg.id,
-//                     data:error
-//                 }
-//                 post( message, msg.sync === CallTypes.SYNC );
-//             };
-//
-//             /* Event handler for incoming messages
-//              *
-//              * Note: currently only for postMessage messages, not
-//              * for messages coming through a server*/
-//             var recvMSG = function(event) {
-//                 var i;
-//                 in_msg_queue.push(event.data);
-//                 for(i=0;i<in_msg_queue.length;i++) {
-//                     processMSG(in_msg_queue[i]);
-//                 }
-//                 in_msg_queue = [];
-//             };
-//
-//             /* Takes a message object @msg and processes it.
-//              * If it is of type
-//              *
-//              *    --- RPC then it calls the method and posts the results
-//              *        via postResult
-//              *
-//              *    --- RPR then it calls the result handler if it exists passing @msg.data
-//              *        as its argument; if it does not exist it returns the @msg.data
-//              */
-//             var processMSG = function(msg) {
-//                 var i, not_processed = [], method_name, method_args, method, result;
-//                 switch( msg.type ) {
-//                     /* Message is a request for calling a local method */
-//                     case Types.RPC:
-//                         method_name = msg.data.name;
-//                         method_args = msg.data.args;
-//                         if (method_name in local_sync_methods) {
-//                             method = local_sync_methods[method_name];
-//                             result = method.f.apply(method.o, method_args);
-//                             postResult(msg, result);
-//                         } else if (method_name in local_async_methods) {
-//                             method = local_async_methods[method_name];
-//                             method.f.apply(method.o, method_args.concat([function (result){
-//                                 postResult(msg,result);
-//                             }]));
-//                         } else {
-//                             postError(msg,"Unknown method"+method_name);
-//                             console.log("Unknown method:"+method_name);
-//                         }
-//                         return true;
-//                     /* Message is a response to a rpc call */
-//                     case Types.RPR:
-//                         if (msg.reply_to in result_handlers) {
-//                             result_handlers[msg.reply_to](msg.data);
-//                         } else return msg.data;
-//                     /* Message is a part of the initial connection handshake */
-//                     case Types.CONNECT:
-//                         connected = true;
-//                         if (worker) {
-//                             processOUTQueue();
-//                             console.log("Slave connected");
-//                         }
-//                         else {
-//                             self.channel_id = msg.data.channel_id;
-//                             sync_url = msg.data.sync_url;
-//                             console.log("Connected to master, sync_url:"+sync_url+"; id:"+self.channel_id);
-//                             postMSG({type:Types.CONNECT, data:null, reply_to:msg.id,sync:CallTypes.DISCARD},false);
-//                         }
-//                         return true;
-//                     /* Message is either of unknown type or is malformed */
-//                     default:
-//                         console.log("Unknown message type");
-//                 }
-//             }
-//
-//             /* Waits for the result of the rpc call requested
-//              * in a msg with id @msgid;
-//              *
-//              * If @calltp is
-//              *
-//              *   -- CallTypes.DISCARD then it returns immediately an undefined value
-//              *   -- CallTypes.ASYNC then it asynchronously waits for the response and
-//              *      then calls the callback function with the response
-//              *   -- CallTypes.SYNC it polls the sync_server for messages waiting for
-//              *      the response to arrive; if it receives a message which is not a reply
-//              *      (its reply_to field is different from @msgid) it queues it for later
-//              *      processing; when the response arrives it returns it
-//              */
-//             var waitResult = function(msgid, calltp, callback) {
-//                 var i,msgs=[],msg,got_reply,reply;
-//                 if (calltp === CallTypes.DISCARD) return;
-//                 if (calltp === CallTypes.ASYNC) result_handlers[msgid] = callback;
-//                 else {
-//                     while (true) {
-//                       req = new XMLHttpRequest();
-//                       req.open('GET', sync_url+'/'+self.channel_id+'/',false);
-//                       req.send(null);
-//                       if ( req.status === 200 ) {
-//                           msgs = JSON.parse(req.responseText);
-//                           got_reply = false;
-//                           for(i=0;i<msgs.length;i++) {
-//                               msg = utils.dec64(msgs[i])
-//                               if (msg.reply_to === msgid) {
-//                                   got_reply = true;
-//                                   reply = msg.data;
-//                               } else in_msg_queue.push(msg);
-//                           }
-//                           if (got_reply) return reply;
-//                       }
-//                     }
-//                 };
-//             }
-//
-//
-//             /**********************************************
-//              *              INITIALIZATION                *
-//              **********************************************/
-//             this.worker = worker;
-//             this.channel_id = (chanid === undefined) ? base_chan_id+num_chans++ : chanid;
-//
-//             if (worker === null) {
-//                 onmessage = recvMSG;
-//             } else {
-//                 worker.onmessage = recvMSG;
-//                 connect();
-//             }
-//
-//             /**********************************************
-//              *          SEMI PRIVATE METHODS              *
-//              **********************************************/
-//             this._recvMSG = recvMSG;
-//
-//             this.provide = function(name, func, object) {
-//                 local_sync_methods[name] = {f:func, o:object};
-//             }
-//
-//             /* Assumes that the function @func calls the
-//              * last argument (a callback) with the result
-//              * once the result is available */
-//             this.provide_async = function (name, func, object) {
-//                 local_async_methods[name] = {f:func,o:object};
-//             }
-//
-//             this.close = function () {
-//                 if ( this.worker ) {
-//                     this.worker.terminate();
-//                 }
-//             }
-//
-//             /* Initiates a RPC executing @name on the
-//              * remote end. If @callback is
-//              *  -- a function, it is called with the result when available.
-//              *  -- null, then the result is discarded
-//              *  -- undefined then we wait until the result is available and then return it
-//              */
-//             this.remote_call = function(name,args,callback) {
-//                 var tp;
-//                 if ( callback === null ) tp = CallTypes.DISCARD;
-//                 else if ( callback === undefined ) tp = CallTypes.SYNC;
-//                 else tp = CallTypes.ASYNC;
-//                 var id = postMSG({
-//                     type:Types.RPC,
-//                     data:{name:name,args:args},
-//                     sync:tp
-//                 });
-//                 return waitResult(id,tp,callback)
-//             }
-//         }
-//     }
-// });
