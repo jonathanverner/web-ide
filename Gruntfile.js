@@ -351,6 +351,11 @@ module.exports = function (grunt) {
         configFile: 'karma.conf.js',
         browsers: ['Chrome'],
         singleRun: false
+      },
+      debugff: {
+        configFile: 'karma.conf.js',
+        browsers: ['Firefox'],
+        singleRun: false
       }
     },
 
