@@ -11,7 +11,7 @@ define(["lib/utils", "lib/exceptions"],function(utils,EX) {
             // Connects signal handler @slot to this signal
             this.connect = function(slot, object) {
                 if (slot.length > arg_len) throw new Exc("Wrong slot signature ("+slot.length+" instead of "+arg_len+").");
-                slots.push({s:slot,o:object});
+                slots.push({s:slot,o:object,n:slot.name});
                 if (slot.__signals__ === undefined) slot.__signals__ = [];
                 slot.__signals__.push(this);
             }
@@ -19,7 +19,7 @@ define(["lib/utils", "lib/exceptions"],function(utils,EX) {
                 var i;
                 if (arguments.length != arg_len) throw new Exc("Wrong signal signature (expecting "+arg_len+" got "+ arguments.length+" arguments");
                 for(i = 0; i < slots.length; i++) {
-                        if ( recursion_check > 3 ) throw new Exc("Recursion depth exceeded limit "+recursion_check);
+                        if ( recursion_check > 10 ) throw new Exc("Recursion depth exceeded limit "+recursion_check+" ("+slots[i].n+")");
                         recursion_check++;
                         slots[i].s.apply(slots[i].o,arguments);
                         recursion_check--;
