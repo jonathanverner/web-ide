@@ -38,6 +38,14 @@ define(function() {
     var enc64 = function(obj) {
         return btoa(encodeURIComponent(escape(JSON.stringify(obj))));
     }
+
+    var sleep = function (msec) {
+        var date = new Date();
+        var curDate = null;
+        do { curDate = new Date(); }
+        while(curDate-date < msec);
+    }
+
     var dec64 = function(string) {
         return JSON.parse(unescape(decodeURIComponent(atob(string))));
     }
@@ -70,6 +78,7 @@ define(function() {
         server_log:server_log,
         add_properties:add_properties,
         isWorker:isWorker,
+        sleep: sleep
     }
 
     add_properties(ret, consts);
