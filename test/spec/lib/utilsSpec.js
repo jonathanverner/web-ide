@@ -40,6 +40,10 @@ define(['lib/utils'], function(lib) {
             expect(lib.enc64(lib.dec64(lib.enc64(obj))) ).toEqual(lib.enc64(obj));
         });
 
+        it('isWorker should return false in main thread', function () {
+            expect(lib.isWorker()).toBe(false);
+        });
+
         it('sleep should sleep', function () {
             var start = new Date(),
                 end = 0, sleep_int=200, tolerance=10;
