@@ -66,6 +66,23 @@ define(function() {
         return isWebWorker;
     }
 
+    var ajax = function(data, onError, onSuccess) {
+        var req = new XMLHttpRequest();
+        var method = data.type || 'GET';
+        var formData = '';
+        var attrName;
+        if ( data.data ) {
+            formData = new FormData();
+            for ( attrName in data.data ) formData.append(attrName, data.data[attrName]);
+        }
+        if ( onError ) req.addEventListener("error", onError,false);
+        if ( onSuccess) req.addEventListener("load", function () {
+            onSuccess(req.responseText);
+        },false);
+        req.open(method, data.url, true);
+        req.send(formData);
+    }
+
     var ret = {
         lstrip:lstrip,
         rstrip:rstrip,
@@ -78,6 +95,7 @@ define(function() {
         server_log:server_log,
         add_properties:add_properties,
         isWorker:isWorker,
+        ajax:ajax,
         sleep: sleep
     }
 

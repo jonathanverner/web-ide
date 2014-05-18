@@ -48,6 +48,40 @@ define(['lib/utils'], function(lib) {
             expect((end - start)).not.toBeLessThan(sleep_int);
             expect((end - start)).toBeLessThan(sleep_int+tolerance);
         });
+
+        it('ajax should send correct post requests & receive responses', function () {
+            var done = false,
+                result,
+                error,
+                data = {
+                'string_A':"A",
+                'string_B':"B"
+            }
+            runs(function () {
+                lib.ajax({
+                    url:'http://localhost:8000/ping/',
+                    type:'POST',
+                    data:data
+                }, function err(event) {
+                    done = true;
+                    error = event;
+                }, function succ(responseText) {
+                    done = true;
+                    result = JSON.parse(responseText);
+                });
+            });
+
+            waitsFor(function() {
+                return done;
+            }, "the request should complete", 1000);
+
+            runs(function () {
+                expect(result).toEqual(data);
+                expect(error).toBe(undefined);
+            });
+        });
+
+
     });
 
 
