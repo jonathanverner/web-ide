@@ -1,8 +1,9 @@
 // Utils
-define(function() {
+define(['lib/exceptions', 'lib/base64'], function(EX,b64) {
     'use strict';
 
     var consts = {};
+    var Exc = EX.register("utils");
 
     var add_properties = function (to_obj, from_obj) {
         var prop;
@@ -36,7 +37,7 @@ define(function() {
         return (i == plen);
     }
     var enc64 = function(obj) {
-        return btoa(encodeURIComponent(escape(JSON.stringify(obj))));
+        return b64.encode(encodeURIComponent(escape(JSON.stringify(obj))));
     }
 
     var sleep = function (msec) {
@@ -47,8 +48,13 @@ define(function() {
     }
 
     var dec64 = function(string) {
-        return JSON.parse(unescape(decodeURIComponent(atob(string))));
+        try {
+            return JSON.parse(unescape(decodeURIComponent(b64.decode(string))));
+        } catch (e) {
+            throw Exc("Error decoding string"+string);
+        }
     }
+
     var randstr = function (length) {
         var chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
         var result = '';
